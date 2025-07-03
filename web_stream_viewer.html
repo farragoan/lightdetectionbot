@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Raspberry Pi Camera Stream</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .video-container {
+            text-align: center;
+            margin: 20px 0;
+        }
+        .controls {
+            text-align: center;
+            margin: 20px 0;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .status {
+            text-align: center;
+            margin: 20px 0;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .status.connected {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.disconnected {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .instructions {
+            background-color: #e7f3ff;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        #streamImage {
+            max-width: 100%;
+            height: auto;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Raspberry Pi Camera Stream</h1>
+        
+        <div class="status disconnected" id="status">
+            Status: Disconnected
+        </div>
+        
+        <div class="video-container">
+            <img id="streamImage" src="http://192.168.29.91:8080" alt="Camera Stream" style="display: none;">
+            <div id="noStream">No stream available. Make sure the camera stream is running on the Raspberry Pi.</div>
+        </div>
+        
+        <div class="controls">
+            <button onclick="startStream()">Start Stream</button>
+            <button onclick="stopStream()">Stop Stream</button>
+            <button onclick="refreshStream()">Refresh</button>
+        </div>
+        
+        <div class="instructions">
+            <h3>How to view the camera stream:</h3>
+            <p><strong>Option 1 - Web Browser:</strong></p>
+            <ul>
+                <li>Make sure the stream is running on the Pi: <code>python3 stream_camera.py mjpeg</code></li>
+                <li>Open this page in your browser</li>
+                <li>Click "Start Stream" to view the camera feed</li>
+            </ul>
+            
+            <p><strong>Option 2 - Direct URL:</strong></p>
+            <ul>
+                <li>Open: <a href="http://192.168.29.91:8080" target="_blank">http://192.168.29.91:8080</a></li>
+            </ul>
+            
+            <p><strong>Option 3 - VLC:</strong></p>
+            <ul>
+                <li>Open VLC Media Player</li>
+                <li>Go to Media → Open Network Stream</li>
+                <li>Enter: <code>http://192.168.29.91:8080</code></li>
+                <li>Click Play</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        let streamActive = false;
+        let streamInterval = null;
+        
+        function startStream() {
+            const img = document.getElementById('streamImage');
+            const noStream = document.getElementById('noStream');
+            const status = document.getElementById('status');
+            
+            img.style.display = 'block';
+            noStream.style.display = 'none';
+            status.className = 'status connected';
+            status.textContent = 'Status: Connected';
+            streamActive = true;
+            
+            // Add timestamp to prevent caching
+            img.src = 'http://192.168.29.91:8080?' + new Date().getTime();
+            
+            // Refresh the image every 100ms for smooth streaming
+            streamInterval = setInterval(() => {
+                if (streamActive) {
+                    img.src = 'http://192.168.29.91:8080?' + new Date().getTime();
+                }
+            }, 100);
+        }
+        
+        function stopStream() {
+            const img = document.getElementById('streamImage');
+            const noStream = document.getElementById('noStream');
+            const status = document.getElementById('status');
+            
+            img.style.display = 'none';
+            noStream.style.display = 'block';
+            status.className = 'status disconnected';
+            status.textContent = 'Status: Disconnected';
+            streamActive = false;
+            
+            if (streamInterval) {
+                clearInterval(streamInterval);
+                streamInterval = null;
+            }
+        }
+        
+        function refreshStream() {
+            if (streamActive) {
+                const img = document.getElementById('streamImage');
+                img.src = 'http://192.168.29.91:8080?' + new Date().getTime();
+            }
+        }
+        
+        // Handle image load errors
+        document.getElementById('streamImage').onerror = function() {
+            console.log('Failed to load stream image');
+        };
+        
+        // Auto-start stream when page loads
+        window.onload = function() {
+            setTimeout(startStream, 1000);
+        };
+    </script>
+</body>
+</html> 
