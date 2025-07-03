@@ -2,7 +2,6 @@ import requests
 import time
 import os
 import subprocess
-import RPi.GPIO as GPIO
 from datetime import datetime, timedelta
 from config import Config
 
@@ -12,20 +11,6 @@ class AlertManager:
         self.last_alert_time = None
         self.alert_count = 0
         self.last_hour = datetime.now().hour
-        
-        # Setup GPIO
-        self.setup_gpio()
-        
-    def setup_gpio(self):
-        """Initialize GPIO pins for local indicators"""
-        try:
-            GPIO.setmode(GPIO.BCM)
-            GPIO.setup(self.config.GPIO_LED_PIN, GPIO.OUT)
-            GPIO.setup(self.config.GPIO_BUZZER_PIN, GPIO.OUT)
-            GPIO.output(self.config.GPIO_LED_PIN, GPIO.LOW)
-            GPIO.output(self.config.GPIO_BUZZER_PIN, GPIO.LOW)
-        except Exception as e:
-            print(f"GPIO setup failed: {e}")
     
     def should_alert(self):
         """Check if we should send an alert based on cooldown and rate limiting"""
@@ -65,9 +50,6 @@ class AlertManager:
         # Audio alert
         if self.config.AUDIO_ALERT_ENABLED:
             success &= self.trigger_audio_alert()
-        
-        # GPIO indicators
-        success &= self.trigger_gpio_alert()
         
         # Update alert tracking
         self.last_alert_time = datetime.now()
@@ -135,25 +117,6 @@ class AlertManager:
             print(f"Audio alert error: {e}")
             return False
     
-    def trigger_gpio_alert(self):
-        """Trigger GPIO indicators"""
-        try:
-            # Flash LED and buzzer
-            for _ in range(5):  # 5 flashes
-                GPIO.output(self.config.GPIO_LED_PIN, GPIO.HIGH)
-                GPIO.output(self.config.GPIO_BUZZER_PIN, GPIO.HIGH)
-                time.sleep(0.5)
-                GPIO.output(self.config.GPIO_LED_PIN, GPIO.LOW)
-                GPIO.output(self.config.GPIO_BUZZER_PIN, GPIO.LOW)
-                time.sleep(0.5)
-            
-            print("GPIO alert triggered")
-            return True
-            
-        except Exception as e:
-            print(f"GPIO alert error: {e}")
-            return False
-    
     def clear_smart_bulbs(self):
         """Turn off smart bulbs after alert"""
         try:
@@ -189,8 +152,5 @@ class AlertManager:
             return False
     
     def cleanup(self):
-        """Clean up GPIO resources"""
-        try:
-            GPIO.cleanup()
-        except:
-            pass 
+        """Clean up resources (no GPIO)"""
+        pass 

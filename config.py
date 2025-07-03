@@ -29,16 +29,12 @@ class Config:
     AUDIO_ALERT_ENABLED = True
     AUDIO_ALERT_FILE = '/home/pi/lightdetectionbot/alert.wav'
     
-    # GPIO settings for local indicators
-    GPIO_LED_PIN = 18  # Physical pin 12
-    GPIO_BUZZER_PIN = 23  # Physical pin 16
-    
     # Logging
     LOG_LEVEL = 'INFO'
-    LOG_FILE = '/home/pi/lightdetectionbot/light_detector.log'
+    LOG_FILE = os.path.join(os.path.dirname(__file__), 'light_detector.log')
     
     # Image storage
-    IMAGE_DIR = '/home/pi/lightdetectionbot/images'
+    IMAGE_DIR = os.path.join(os.path.dirname(__file__), 'images')
     MAX_IMAGES = 100  # Keep last 100 images
     
     # Detection region (crop image to focus on LED area)
@@ -50,4 +46,15 @@ class Config:
 
     # ROI for rpicam-vid/rpicam-still (left, top, width, height)
     # Example: --roi 0.64,0.50,0.05,0.05
-    CAMERA_ROI = (0.64, 0.50, 0.05, 0.05) 
+    CAMERA_ROI = (0.64, 0.50, 0.05, 0.05)
+
+    @staticmethod
+    def check_secrets():
+        missing = []
+        if not os.getenv('SMART_BULB_API_URL'):
+            missing.append('SMART_BULB_API_URL')
+        if not os.getenv('SMART_BULB_API_KEY'):
+            missing.append('SMART_BULB_API_KEY')
+        if missing:
+            print(f"[SECURITY WARNING] Missing secrets: {', '.join(missing)}. Please set them in your .env file or environment.")
+        return missing 

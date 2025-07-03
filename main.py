@@ -141,6 +141,12 @@ class LightDetectionSystem:
 
 def main():
     """Main entry point"""
+    # Security check for secrets
+    from config import Config
+    missing = Config.check_secrets()
+    if missing:
+        print("[ERROR] Required secrets are missing. Please set them in your .env file before running.")
+        exit(1)
     system = LightDetectionSystem()
     system.run()
 
