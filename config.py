@@ -46,4 +46,8 @@ class Config:
     CROP_LEFT = 0.4   # 40% from left
     CROP_TOP = 0.3    # 30% from top
     CROP_RIGHT = 0.6  # 60% from left
-    CROP_BOTTOM = 0.7 # 70% from top 
+    CROP_BOTTOM = 0.7 # 70% from top
+
+    # ROI for rpicam-vid/rpicam-still (left, top, width, height)
+    # Example: --roi 0.64,0.50,0.05,0.05
+    CAMERA_ROI = (0.64, 0.50, 0.05, 0.05) 

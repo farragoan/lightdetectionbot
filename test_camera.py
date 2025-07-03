@@ -9,12 +9,15 @@ import os
 from config import Config
 
 def start_streaming_server():
-    """Start rpicam-vid streaming server"""
+    """Start rpicam-vid streaming server with ROI"""
     try:
+        config = Config()
+        roi = config.CAMERA_ROI
+        roi_str = f"{roi[0]},{roi[1]},{roi[2]},{roi[3]}"
         # Kill any existing rpicam processes
         subprocess.run(['pkill', '-f', 'rpicam-vid'], capture_output=True)
         
-        # Start rpicam-vid with H.264 streaming
+        # Start rpicam-vid with H.264 streaming and ROI
         cmd = [
             'rpicam-vid',
             '--width', '1280',
@@ -22,13 +25,15 @@ def start_streaming_server():
             '--framerate', '30',
             '--codec', 'h264',
             '--inline',  # Enable inline headers
+            '--roi', roi_str,
             '--listen',  # Enable TCP listening
             '--port', '8888',
             '--output', '-',  # Output to stdout
             '--timeout', '0'  # Run indefinitely
         ]
         
-        print("Starting rpicam-vid streaming server...")
+        print("Starting rpicam-vid streaming server with ROI...")
+        print(f"ROI: {roi_str}")
         print(f"Stream available at: tcp/h264://<pi-ip>:8888")
         print(f"Your Pi IP: 192.168.29.91")
         print("Use VLC: vlc tcp/h264://192.168.29.91:8888")
@@ -67,13 +72,16 @@ def test_camera_with_stream():
             if key == 'q':
                 break
             elif key == 's':
-                # Save current frame using rpicam-still
+                # Save current frame using rpicam-still with ROI
                 timestamp = time.strftime("%Y%m%d_%H%M%S")
                 filename = f"test_capture_{timestamp}.jpg"
+                roi = config.CAMERA_ROI
+                roi_str = f"{roi[0]},{roi[1]},{roi[2]},{roi[3]}"
                 subprocess.run([
                     'rpicam-still',
                     '--width', '1280',
                     '--height', '720',
+                    '--roi', roi_str,
                     '--output', filename
                 ])
                 print(f"Saved: {filename}")

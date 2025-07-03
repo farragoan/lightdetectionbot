@@ -27,17 +27,22 @@ class CameraManager:
             raise
     
     def capture_image(self, save_image=True):
-        """Capture an image using rpicam-still"""
+        """Capture an image using rpicam-still with ROI"""
         try:
             # Create temporary filename
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             temp_filename = f"/tmp/capture_{timestamp}.jpg"
             
-            # Capture image using rpicam-still
+            # ROI from config
+            roi = self.config.CAMERA_ROI
+            roi_str = f"{roi[0]},{roi[1]},{roi[2]},{roi[3]}"
+            
+            # Capture image using rpicam-still with ROI
             cmd = [
                 'rpicam-still',
                 '--width', str(self.config.CAMERA_RESOLUTION[0]),
                 '--height', str(self.config.CAMERA_RESOLUTION[1]),
+                '--roi', roi_str,
                 '--output', temp_filename,
                 '--timeout', '1000',  # 1 second timeout
                 '--nopreview'  # No preview window
@@ -58,29 +63,30 @@ class CameraManager:
             # Convert BGR to RGB
             image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
             
-            # Crop to detection region
-            cropped_image = self._crop_to_detection_region(image_rgb)
-            
+            # No need to crop in Python, already cropped by camera
             if save_image:
-                self._save_image(cropped_image)
+                self._save_image(image_rgb)
             
             # Clean up temporary file
             os.remove(temp_filename)
             
-            return cropped_image
+            return image_rgb
             
         except Exception as e:
             print(f"Error capturing image: {e}")
             return None
     
     def start_streaming(self, port=8888):
-        """Start video streaming using rpicam-vid"""
+        """Start video streaming using rpicam-vid with ROI"""
         try:
             # Kill any existing rpicam processes
             subprocess.run(['pkill', '-f', 'rpicam-vid'], capture_output=True)
             time.sleep(1)
             
-            # Start rpicam-vid streaming
+            roi = self.config.CAMERA_ROI
+            roi_str = f"{roi[0]},{roi[1]},{roi[2]},{roi[3]}"
+            
+            # Start rpicam-vid streaming with ROI
             cmd = [
                 'rpicam-vid',
                 '--width', '1280',
@@ -88,6 +94,7 @@ class CameraManager:
                 '--framerate', '30',
                 '--codec', 'h264',
                 '--inline',
+                '--roi', roi_str,
                 '--listen',
                 '--port', str(port),
                 '--output', '-',
