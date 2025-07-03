@@ -9,35 +9,30 @@ import os
 from config import Config
 
 def start_streaming_server():
-    """Start rpicam-vid streaming server with ROI"""
+    """Start rpicam-vid streaming server with ROI using working UDP format"""
     try:
         config = Config()
         roi = config.CAMERA_ROI
         roi_str = f"{roi[0]},{roi[1]},{roi[2]},{roi[3]}"
+        
         # Kill any existing rpicam processes
         subprocess.run(['pkill', '-f', 'rpicam-vid'], capture_output=True)
+        time.sleep(1)
         
-        # Start rpicam-vid with H.264 streaming and ROI
+        # Use the working command format
         cmd = [
             'rpicam-vid',
-            '--width', '1280',
-            '--height', '720',
-            '--framerate', '30',
-            '--codec', 'h264',
-            '--inline',  # Enable inline headers
-            '--roi', roi_str,
-            '--listen',  # Enable TCP listening
-            '--port', '8888',
-            '--output', '-',  # Output to stdout
-            '--timeout', '0'  # Run indefinitely
+            '-t', '0',  # Run indefinitely
+            '--inline',
+            '-o', 'udp://192.168.29.78:8000',  # Use your working UDP format
+            '--roi', roi_str
         ]
         
         print("Starting rpicam-vid streaming server with ROI...")
         print(f"ROI: {roi_str}")
-        print(f"Stream available at: tcp/h264://<pi-ip>:8888")
-        print(f"Your Pi IP: 192.168.29.91")
-        print("Use VLC: vlc tcp/h264://192.168.29.91:8888")
-        print("Or Chrome: http://192.168.29.91:8888")
+        print(f"Stream available at: udp://192.168.29.78:8000")
+        print("Use VLC: vlc udp://@:8000")
+        print("Or: vlc udp://192.168.29.78:8000")
         
         process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         return process
