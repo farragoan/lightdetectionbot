@@ -1,0 +1,28 @@
+# Smart Bulb Configuration
+# Uncomment and configure for your smart home system
+
+# Home Assistant
+# SMART_BULB_API_URL=http://192.168.1.100:8123
+# SMART_BULB_API_KEY=your_long_lived_access_token
+
+# Philips Hue
+# HUE_BRIDGE_IP=192.168.1.101
+# HUE_USERNAME=your_hue_username
+
+# Tuya/Smart Life
+# TUYA_DEVICE_ID=your_device_id
+# TUYA_DEVICE_IP=192.168.1.102
+# TUYA_LOCAL_KEY=your_local_key
+
+# Audio Alert Configuration
+AUDIO_ALERT_ENABLED=true
+AUDIO_ALERT_FILE=/home/pi/lightdetectionbot/alert.wav
+
+# Detection Sensitivity (0.0 to 1.0)
+RED_LIGHT_THRESHOLD=0.3
+
+# Detection Interval (seconds)
+DETECTION_INTERVAL=15
+
+# Alert Cooldown (seconds)
+ALERT_COOLDOWN=300 
