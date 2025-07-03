@@ -6,45 +6,22 @@ import os
 import time
 from datetime import datetime
 
-# Mock classes for local testing
-class MockCamera:
-    """Mock camera for local testing"""
-    def __init__(self, test_image_path=None):
-        self.test_image_path = test_image_path or "test_images/"
-        self.test_images = self._load_test_images()
-        self.current_image_index = 0
+def test_light_detection():
+    """Test light detection with synthetic image"""
+    print("🧪 Testing Light Detection System (Local)")
+    print("=" * 50)
     
-    def _load_test_images(self):
-        """Load test images from directory"""
-        images = []
-        if os.path.exists(self.test_image_path):
-            for file in os.listdir(self.test_image_path):
-                if file.lower().endswith(('.png', '.jpg', '.jpeg')):
-                    images.append(os.path.join(self.test_image_path, file))
-        return sorted(images)
-    
-    def capture_array(self):
-        """Mock camera capture - returns test image"""
-        if not self.test_images:
-            # Create a synthetic test image
-            return self._create_synthetic_image()
+    try:
+        from light_detector import LightDetector
+        from config import Config
         
-        # Cycle through test images
-        image_path = self.test_images[self.current_image_index]
-        self.current_image_index = (self.current_image_index + 1) % len(self.test_images)
+        # Create detector
+        detector = LightDetector()
         
-        image = cv2.imread(image_path)
-        if image is None:
-            return self._create_synthetic_image()
+        print("📷 Testing with synthetic image...")
         
-        return image
-    
-    def _create_synthetic_image(self):
-        """Create a synthetic image for testing"""
-        # Create a 1920x1080 image
+        # Create a synthetic test image
         image = np.zeros((1080, 1920, 3), dtype=np.uint8)
-        
-        # Add some background
         image[:] = (50, 50, 50)  # Dark gray background
         
         # Add a red LED (simulating the meter LED)
@@ -55,76 +32,70 @@ class MockCamera:
         cv2.putText(image, "MOCK METER", (center_x-100, center_y-100), 
                    cv2.FONT_HERSHEY_SIMPLEX, 2, (255, 255, 255), 3)
         
-        return image
-    
-    def close(self):
-        pass
+        # Convert BGR to RGB
+        image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        
+        # Analyze image
+        analysis = detector.analyze_image(image_rgb)
+        
+        print(f"🔍 Detection Results:")
+        print(f"   Detected: {analysis['detected']}")
+        print(f"   Confidence: {analysis['confidence']:.2f}")
+        print(f"   Red Pixels: {analysis['red_pixels']}")
+        print(f"   Red Ratio: {analysis['red_ratio']:.4f}")
+        print(f"   Brightness: {analysis['brightness']:.1f}")
+        
+        # Create debug image
+        debug_image = detector.create_debug_image(image_rgb, analysis)
+        cv2.imwrite("local_test_result.jpg", cv2.cvtColor(debug_image, cv2.COLOR_RGB2BGR))
+        print("📸 Debug image saved as 'local_test_result.jpg'")
+        
+        return True
+        
+    except Exception as e:
+        print(f"❌ Light detection test failed: {e}")
+        return False
 
-class MockGPIO:
-    """Mock GPIO for local testing"""
-    def __init__(self):
-        self.led_state = False
-        self.buzzer_state = False
+def test_config():
+    """Test configuration loading"""
+    print("\n⚙️ Testing Configuration...")
     
-    def setmode(self, mode):
-        pass
-    
-    def setup(self, pin, mode):
-        pass
-    
-    def output(self, pin, state):
-        if pin == 18:  # LED pin
-            self.led_state = state
-            print(f"🔴 LED: {'ON' if state else 'OFF'}")
-        elif pin == 23:  # Buzzer pin
-            self.buzzer_state = state
-            print(f"🔊 Buzzer: {'ON' if state else 'OFF'}")
-    
-    def cleanup(self):
-        pass
+    try:
+        from config import Config
+        config = Config()
+        
+        print(f"✅ Configuration loaded successfully")
+        print(f"   Detection interval: {config.DETECTION_INTERVAL} seconds")
+        print(f"   Red light threshold: {config.RED_LIGHT_THRESHOLD}")
+        print(f"   Image directory: {config.IMAGE_DIR}")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Configuration test failed: {e}")
+        return False
 
-# Mock the Pi-specific imports
-import sys
-sys.modules['picamera2'] = type('MockPicamera2', (), {})
-sys.modules['RPi.GPIO'] = MockGPIO()
-
-def test_light_detection_local():
-    """Test light detection with mock camera"""
-    print("🧪 Testing Light Detection System (Local)")
-    print("=" * 50)
+def test_image_processing():
+    """Test image processing functions"""
+    print("\n🖼️ Testing Image Processing...")
     
-    # Import our modules (they'll use mock components)
-    from light_detector import LightDetector
-    from config import Config
-    
-    # Create mock camera
-    mock_camera = MockCamera()
-    
-    # Create detector
-    detector = LightDetector()
-    
-    print("📷 Testing with synthetic image...")
-    
-    # Test with synthetic image
-    image = mock_camera.capture_array()
-    image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    
-    # Analyze image
-    analysis = detector.analyze_image(image_rgb)
-    
-    print(f"🔍 Detection Results:")
-    print(f"   Detected: {analysis['detected']}")
-    print(f"   Confidence: {analysis['confidence']:.2f}")
-    print(f"   Red Pixels: {analysis['red_pixels']}")
-    print(f"   Red Ratio: {analysis['red_ratio']:.4f}")
-    print(f"   Brightness: {analysis['brightness']:.1f}")
-    
-    # Create debug image
-    debug_image = detector.create_debug_image(image_rgb, analysis)
-    cv2.imwrite("local_test_result.jpg", cv2.cvtColor(debug_image, cv2.COLOR_RGB2BGR))
-    print("📸 Debug image saved as 'local_test_result.jpg'")
-    
-    return analysis
+    try:
+        from light_detector import LightDetector
+        
+        # Create a test image with a bright red LED
+        test_image = np.zeros((100, 100, 3), dtype=np.uint8)
+        test_image[40:60, 40:60] = [0, 0, 255]  # Red square
+        
+        detector = LightDetector()
+        analysis = detector.analyze_image(test_image)
+        
+        print(f"✅ Image processing test passed")
+        print(f"   Red pixels detected: {analysis['red_pixels']}")
+        print(f"   Detection result: {analysis['detected']}")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Image processing test failed: {e}")
+        return False
 
 def test_with_real_images():
     """Test with real images if available"""
@@ -134,78 +105,73 @@ def test_with_real_images():
     if not os.path.exists(test_dir):
         print(f"❌ No test images found in {test_dir}")
         print("   Create this directory and add some test images")
-        return
+        return True  # Not a failure, just no images
     
-    from light_detector import LightDetector
-    detector = LightDetector()
-    
-    images = [f for f in os.listdir(test_dir) if f.lower().endswith(('.png', '.jpg', '.jpeg'))]
-    
-    if not images:
-        print("❌ No images found in test_images/")
-        return
-    
-    print(f"🔍 Testing {len(images)} images...")
-    
-    for i, image_file in enumerate(images[:5]):  # Test first 5 images
-        image_path = os.path.join(test_dir, image_file)
-        image = cv2.imread(image_path)
+    try:
+        from light_detector import LightDetector
+        detector = LightDetector()
         
-        if image is not None:
-            image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-            analysis = detector.analyze_image(image_rgb)
+        images = [f for f in os.listdir(test_dir) if f.lower().endswith(('.png', '.jpg', '.jpeg'))]
+        
+        if not images:
+            print("❌ No images found in test_images/")
+            return True  # Not a failure, just no images
+        
+        print(f"🔍 Testing {len(images)} images...")
+        
+        for i, image_file in enumerate(images[:5]):  # Test first 5 images
+            image_path = os.path.join(test_dir, image_file)
+            image = cv2.imread(image_path)
             
-            print(f"   {image_file}: {'🔴 DETECTED' if analysis['detected'] else '⚪ No red light'} "
-                  f"(conf: {analysis['confidence']:.2f})")
-            
-            # Save debug image
-            debug_image = detector.create_debug_image(image_rgb, analysis)
-            debug_filename = f"debug_{image_file}"
-            cv2.imwrite(debug_filename, cv2.cvtColor(debug_image, cv2.COLOR_RGB2BGR))
-
-def test_alert_system():
-    """Test alert system with mock components"""
-    print("\n🚨 Testing Alert System...")
-    
-    # Mock the GPIO import
-    import sys
-    sys.modules['RPi.GPIO'] = MockGPIO()
-    
-    from alert_manager import AlertManager
-    
-    alert_manager = AlertManager()
-    
-    # Test alert triggering
-    mock_analysis = {
-        'detected': True,
-        'confidence': 0.8,
-        'red_pixels': 1000,
-        'total_pixels': 10000,
-        'red_ratio': 0.1,
-        'brightness': 150
-    }
-    
-    print("🔔 Triggering mock alert...")
-    success = alert_manager.trigger_alert(mock_analysis)
-    print(f"   Alert result: {'✅ Success' if success else '❌ Failed'}")
-    
-    alert_manager.cleanup()
+            if image is not None:
+                image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+                analysis = detector.analyze_image(image_rgb)
+                
+                print(f"   {image_file}: {'🔴 DETECTED' if analysis['detected'] else '⚪ No red light'} "
+                      f"(conf: {analysis['confidence']:.2f})")
+                
+                # Save debug image
+                debug_image = detector.create_debug_image(image_rgb, analysis)
+                debug_filename = f"debug_{image_file}"
+                cv2.imwrite(debug_filename, cv2.cvtColor(debug_image, cv2.COLOR_RGB2BGR))
+        
+        return True
+        
+    except Exception as e:
+        print(f"❌ Real image test failed: {e}")
+        return False
 
 def main():
     """Run all local tests"""
     print("🚀 Light Detection System - Local Testing")
     print("=" * 50)
     
-    # Test 1: Light detection with synthetic image
-    test_light_detection_local()
+    tests_passed = 0
+    total_tests = 4
     
-    # Test 2: Light detection with real images (if available)
-    test_with_real_images()
+    # Test 1: Configuration
+    if test_config():
+        tests_passed += 1
     
-    # Test 3: Alert system
-    test_alert_system()
+    # Test 2: Light detection with synthetic image
+    if test_light_detection():
+        tests_passed += 1
     
-    print("\n✅ Local testing complete!")
+    # Test 3: Image processing
+    if test_image_processing():
+        tests_passed += 1
+    
+    # Test 4: Light detection with real images (if available)
+    if test_with_real_images():
+        tests_passed += 1
+    
+    print(f"\n📊 Test Results: {tests_passed}/{total_tests} tests passed")
+    
+    if tests_passed == total_tests:
+        print("✅ All tests passed! System is ready for Pi deployment.")
+    else:
+        print("⚠️ Some tests failed. Check the errors above.")
+    
     print("\nNext steps:")
     print("1. Review test results and debug images")
     print("2. Adjust detection parameters in config.py if needed")

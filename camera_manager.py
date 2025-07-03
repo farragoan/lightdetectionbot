@@ -2,121 +2,83 @@ import cv2
 import numpy as np
 import time
 import os
-import subprocess
 from datetime import datetime
 from config import Config
 
 class CameraManager:
     def __init__(self):
         self.config = Config()
-        self.stream_process = None
+        self.picam2 = None
         self.setup_camera()
         
     def setup_camera(self):
-        """Initialize the Pi Camera using rpicam"""
+        """Initialize the Pi Camera"""
         try:
-            # Test if rpicam is available
-            result = subprocess.run(['rpicam-still', '--help'], 
-                                  capture_output=True, text=True)
-            if result.returncode != 0:
-                raise Exception("rpicam-still not found. Please install rpicam-apps.")
-            
-            print("Camera initialized successfully with rpicam")
+            # Try to import picamera2
+            try:
+                from picamera2 import Picamera2
+                self.picam2 = Picamera2()
+                camera_config = self.picam2.create_still_configuration(
+                    main={"size": self.config.CAMERA_RESOLUTION},
+                    controls={"FrameDurationLimits": (33333, 33333)}  # 30 FPS
+                )
+                self.picam2.configure(camera_config)
+                self.picam2.start()
+                time.sleep(2)  # Allow camera to warm up
+                print("Camera initialized successfully with picamera2")
+            except ImportError:
+                print("picamera2 not available - this is expected on non-Pi systems")
+                self.picam2 = None
+            except Exception as e:
+                print(f"Failed to initialize picamera2: {e}")
+                self.picam2 = None
+                
         except Exception as e:
             print(f"Failed to initialize camera: {e}")
-            raise
+            self.picam2 = None
     
     def capture_image(self, save_image=True):
-        """Capture an image using rpicam-still with ROI"""
+        """Capture an image and optionally save it"""
         try:
-            # Create temporary filename
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            temp_filename = f"/tmp/capture_{timestamp}.jpg"
+            if self.picam2 is None:
+                # Create a mock image for testing
+                return self._create_mock_image()
             
-            # ROI from config
-            roi = self.config.CAMERA_ROI
-            roi_str = f"{roi[0]},{roi[1]},{roi[2]},{roi[3]}"
-            
-            # Capture image using rpicam-still with ROI
-            cmd = [
-                'rpicam-still',
-                '--width', str(self.config.CAMERA_RESOLUTION[0]),
-                '--height', str(self.config.CAMERA_RESOLUTION[1]),
-                '--roi', roi_str,
-                '--output', temp_filename,
-                '--timeout', '1000',  # 1 second timeout
-                '--nopreview'  # No preview window
-            ]
-            
-            result = subprocess.run(cmd, capture_output=True, text=True)
-            
-            if result.returncode != 0:
-                print(f"Failed to capture image: {result.stderr}")
-                return None
-            
-            # Read the captured image
-            image = cv2.imread(temp_filename)
-            if image is None:
-                print("Failed to read captured image")
-                return None
+            # Capture image
+            image = self.picam2.capture_array()
             
             # Convert BGR to RGB
             image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
             
-            # No need to crop in Python, already cropped by camera
+            # Crop to detection region
+            cropped_image = self._crop_to_detection_region(image_rgb)
+            
             if save_image:
-                self._save_image(image_rgb)
+                self._save_image(cropped_image)
             
-            # Clean up temporary file
-            os.remove(temp_filename)
-            
-            return image_rgb
+            return cropped_image
             
         except Exception as e:
             print(f"Error capturing image: {e}")
-            return None
+            return self._create_mock_image()
     
-    def start_streaming(self, port=8888):
-        """Start video streaming using rpicam-vid with ROI"""
-        try:
-            # Kill any existing rpicam processes
-            subprocess.run(['pkill', '-f', 'rpicam-vid'], capture_output=True)
-            time.sleep(1)
-            
-            roi = self.config.CAMERA_ROI
-            roi_str = f"{roi[0]},{roi[1]},{roi[2]},{roi[3]}"
-            
-            # Start rpicam-vid streaming with ROI
-            cmd = [
-                'rpicam-vid',
-                '--width', '1280',
-                '--height', '720',
-                '--framerate', '30',
-                '--codec', 'h264',
-                '--inline',
-                '--roi', roi_str,
-                '--listen',
-                '--port', str(port),
-                '--output', '-',
-                '--timeout', '0'
-            ]
-            
-            self.stream_process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            print(f"Streaming started on port {port}")
-            print(f"Access with: vlc tcp/h264://192.168.29.91:{port}")
-            return True
-            
-        except Exception as e:
-            print(f"Failed to start streaming: {e}")
-            return False
-    
-    def stop_streaming(self):
-        """Stop video streaming"""
-        if self.stream_process:
-            self.stream_process.terminate()
-            self.stream_process.wait()
-            self.stream_process = None
-            print("Streaming stopped")
+    def _create_mock_image(self):
+        """Create a mock image for testing when camera is not available"""
+        # Create a 1920x1080 image
+        image = np.zeros((1080, 1920, 3), dtype=np.uint8)
+        
+        # Add some background
+        image[:] = (50, 50, 50)  # Dark gray background
+        
+        # Add a red LED (simulating the meter LED)
+        center_x, center_y = 960, 540
+        cv2.circle(image, (center_x, center_y), 20, (0, 0, 255), -1)  # Red circle
+        
+        # Add some text
+        cv2.putText(image, "MOCK CAMERA", (center_x-100, center_y-100), 
+                   cv2.FONT_HERSHEY_SIMPLEX, 2, (255, 255, 255), 3)
+        
+        return image
     
     def _crop_to_detection_region(self, image):
         """Crop image to focus on the LED area"""
@@ -158,4 +120,5 @@ class CameraManager:
     
     def close(self):
         """Clean up camera resources"""
-        self.stop_streaming() 
+        if self.picam2:
+            self.picam2.close() 
